@@ -51,7 +51,7 @@ To validate the algorithms before deployment, we developed prototype implementat
 
 ---
 
-## ⚡ Standard Kalman Filter Performance Reports (Practice 2)
+## ⚡ Standard Kalman Filter Performance Reports
 
 ### 🎯 Objectives
 
