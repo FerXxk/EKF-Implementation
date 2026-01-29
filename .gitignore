@@ -2,7 +2,6 @@
 build/
 install/
 log/
-results/
 
 # Python cache
 __pycache__/
