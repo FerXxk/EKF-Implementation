@@ -2,6 +2,7 @@
 
 ![ROS 2](https://img.shields.io/badge/ROS2-Humble-22314E?style=for-the-badge&logo=ros&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![MATLAB](https://img.shields.io/badge/MATLAB-R2024a-FF69B4?style=for-the-badge&logo=matlab&logoColor=white)
 ![License](https://img.shields.io/badge/License-Apache%202.0-D22128?style=for-the-badge)
 
 > **Advanced State Estimation & Control Simulation using Extended Kalman Filters.**
@@ -14,15 +15,6 @@ This project implements a modular ROS 2 workspace designed for simulating and es
 
 The workspace is organized into three core packages, consolidated for clarity and modularity:
 
-```mermaid
-graph TD;
-    src-->drone_controller;
-    src-->drone_services;
-    src-->ekf_estimator;
-    drone_controller-->|Publishes|GPS/NavSatFix;
-    drone_services-->|Computes|MathOps;
-    ekf_estimator-->|Fuses|Odom+IMU;
-```
 
 - **🎮 `drone_controller`**: Directs drone navigation and acts as the driver interface.
 - **🛠️ `drone_services`**: Provides computational services to offload heavy calculations.
@@ -30,63 +22,127 @@ graph TD;
 
 ---
 
-## ⚡ Performance Reports & Results
+## 🧮 MATLAB Prototyping
 
-We evaluated our Kalman Filters under three distinct scenarios to ensure robustness.
+To validate the algorithms before deployment, we developed prototype implementations of **Standard Kalman Filters** in MATLAB. These scripts demonstrate the core logic used for state estimation.
+*(See graphs below in the Performance Reports section)*
 
-### 1. Base Configuration (Ideal Conditions)
-*Standard operation with minimal noise.*
+
+
+- **`FK1.m`**: **Basic 2D Position Tracking**
+
+  - Uses a simple state vector `[x, y]`.
+  - **Process Model**: Constant position with random walk.
+  - **Observation**: Direct noisy position measurements.
+
+  ![FK1](results/kalman_trajectory1.svg)
+
+- **`FK2.m`**: **Constant Velocity Model with Signal Loss Simulation**
+  - Expanded state vector `[x, y, vx, vy]`.
+  - **Process Model**: Constant velocity kinematics.
+  - **Observation**: Position only.
+  - **Feature**: Simulates GPS signal loss (missing data) and relies on prediction steps during outages.
+
+  ![FK2](results/kalman_trajectory2.svg)
+
+- **`FK3.m`**: **Advanced Velocity Inference**
+  - Uses the same Constant Velocity Model as `FK2`.
+  - **Feature**: Observation matrix includes previous states to better infer velocity from position changes.
+  - Also handles missing measurement data.
+
+  ![FK3](results/kalman_trajectory3.svg)
+
+---
+
+## ⚡ Standard Kalman Filter Performance Reports (Practice 2)
+
+### 🎯 Objectives
+
+- Understand and implement a basic Kalman Filter to estimate robot position.
+- Extend the state model to include linear and angular velocity.
+- Study filter behavior under different noise configurations (process and measurement).
+- Prepare the foundation for implementing an Extended Kalman Filter (EKF) in future practices.
+
+### 🏗️ Implementation Structure
+
+The ROS 2 implementation is organized as follows:
+
+- **`kalman_filter.py`**: Contains the `KalmanFilter` and `KalmanFilter_2` classes.
+- **`motion_models.py`**: Defines the linear motion model.
+- **`observation_models.py`**: Defines the observation model.
+- **`kf_estimation.py`**: Main ROS 2 node that executes the filter.
+- **`sensor_utils.py`**: Utility functions for data extraction and normalization.
+- **`visualization.py`**: Manages estimation visualization.
+
+### 📊 Filter Models
+
+#### Model 1 – Basic Kalman Filter (`KalmanFilter`)
+
+- **State Vector**: 2D position `(x, y, θ)`
+- **Observation**: Position measured with noise
+- **Control Input**: Linear and angular velocity
+- Implements a linear motion model and direct position observation
+
+#### Model 2 – Extended State Kalman Filter (`KalmanFilter_2`)
+
+- **State Vector**: Extended `(x, y, θ, vx, vy, ω)`
+- **Observation**: Position and velocities with noise
+- **Control Input**: Linear velocity in x, y and rotational
+- Better incorporates real robot motion dynamics
+
+### 🧪 Experimental Results
+
+We conducted experiments with three noise configurations, generating the corresponding performance graphs.
+
+#### 🔵 Case 1 – Low Noise (Default Configuration)
+*Low values for initial covariance matrix `Q` and measurement noise `R`.*
 
 | Position Estimation | Velocity Estimation |
 |:---:|:---:|
 | ![Posicion Sin Ruido](results/kf_posicion_sinruido.png) | ![Velocidad Sin Ruido](results/kf_vel_sinruido.png) |
-| **Observation**: The 3D model is fast, but 8D offers superior trajectory smoothnes. | **Observation**: Velocity profiles are stable across all filters. |
+| The filter accurately tracks the robot trajectory. Estimation is very close to the actual path. | The model trusts both the process and the measurement equally. |
 
-### 2. High Measurement Noise (Sensor Errors)
-*Increased covariance in GPS/Odometry readings.*
+#### 🔴 Case 2 – High Measurement Noise
+*Low values for `Q` matrix. Measurement noise `R` multiplied by 5: `noise_std = np.array([0.02, 0.02, 0.01, 0.02, 0.02, 0.01]) * 5`*
 
 | Position Estimation | Velocity Estimation |
 |:---:|:---:|
 | ![Posicion Ruido Medida](results/kf_posicion_ruidoaltomed.png) | ![Velocidad Ruido Medida](results/kf_vel_ruidoaltomedida.png) |
-| **Observation**: The 3D model deviates significantly. The 8D model remains robust. | **Observation**: High frequency noise is filtered out effectively by higher order models. |
+| The filter has significant error because measurements are highly inaccurate. The estimated trajectory is very erratic. | Good compensation is observed thanks to the motion model. |
 
-### 3. High Process Noise (Model Uncertainty)
-*Increased uncertainty in the drone's motion model (wind, turbulence).*
+#### 🟠 Case 3 – High Process Noise
+*Low values for measurement noise `R`. Initial covariance `Q` multiplied by 100: `initial_covariance = np.eye(3) * 100`*
 
 | Position Estimation | Velocity Estimation |
 |:---:|:---:|
 | ![Posicion Ruido Proceso](results/kf_posicion_ruidoaltoproceso.png) | ![Velocidad Ruido Proceso](results/kf_vel_ruidoaltoproceso.png) |
-| **Observation**: The 3D filter handles simplicity well here, while 8D struggles with complex dynamics prediction errors. | **Observation**: Velocity estimates become noisier but remain bounds. |
+| The filter reacts less abruptly to noise. For the pure Kalman Filter, a small offset separates the estimated trajectory from the real one. | This demonstrates how `Q` (process noise) directly affects trust in the dynamic model. |
+
+### 📝 Technical Analysis
+
+- **Q Matrix (Process Noise)**: Controls how much the filter trusts its prediction vs. the measurement.
+  - High `Q` implies more uncertainty in the model, useful for unpredictable robot movements.
+  
+- **R Matrix (Measurement Noise)**: Allows mitigation of very noisy measurements.
+  - Properly tuning `R` helps filter out sensor errors.
+
+- **Extended Model**: The velocity-enhanced model provides richer and more realistic estimation, though it's also more sensitive to velocity observation errors.
 
 ---
 
-## 🚀 Usage
 
-### Installation
-```bash
-git clone git
-cd <repo_directory>
-colcon build --symlink-install
-source install/setup.bash
-```
+## 📈 ROS 2 EKF Implementation Results
 
-### Running the Modules
-**Control System:**
-```bash
-ros2 run drone_controller drone_publisher
-```
+Following the standard KF validation, we implemented **Extended Kalman Filters (EKF)** within the ROS 2 workspace. We tested 7D and 8D state vectors on circular trajectories.
 
-**State Estimator (Choose your fighter):**
-```bash
-# Fast & Lightweight
-ros2 run ekf_estimator ekf_estimation_3d
-
-# Precision Optimized
-ros2 run ekf_estimator ekf_estimation_8d
-```
+| 7D EKF Circle Test | 8D EKF Circle Test |
+|:---:|:---:|
+| ![7D Circle](results/7d_circle.png) | ![8D Circle](results/8d_circle.png) |
+| **7D State**: `[x, y, z, vx, vy, vz, yaw]` | **8D State**: `[x, y, z, vx, vy, vz, yaw, yaw_rate]`  |
+| Shows good tracking but may lag in dynamic curves. | Includes `yaw_rate` for superior prediction in curved trajectories. |
 
 ---
 
 <p align="center">
-  <i>Developed for the Advanced Robotics Course - Practice 3</i>
+  <i>Developed for the Advanced Robotics Course</i>
 </p>
