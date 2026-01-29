@@ -11,16 +11,7 @@ This project implements a modular ROS 2 workspace designed for simulating and es
 
 ---
 
-## 📂 Project Structure
 
-The workspace is organized into three core packages, consolidated for clarity and modularity:
-
-
-- **🎮 `drone_controller`**: Directs drone navigation and acts as the driver interface.
-- **🛠️ `drone_services`**: Provides computational services to offload heavy calculations.
-- **🧠 `ekf_estimator`**: The brain of the operation. Implements EKF with **3D, 7D, and 8D** state vectors.
-
----
 
 ## 🧮 MATLAB Prototyping
 
@@ -35,7 +26,9 @@ To validate the algorithms before deployment, we developed prototype implementat
   - **Process Model**: Constant position with random walk.
   - **Observation**: Direct noisy position measurements.
 
-  ![FK1](results/kalman_trajectory1.svg)
+  <p align="center">
+    <img src="results/kalman_trajectory1.svg" alt="FK1" width="600"/>
+  </p>
 
 - **`FK2.m`**: **Constant Velocity Model with Signal Loss Simulation**
   - Expanded state vector `[x, y, vx, vy]`.
@@ -43,14 +36,18 @@ To validate the algorithms before deployment, we developed prototype implementat
   - **Observation**: Position only.
   - **Feature**: Simulates GPS signal loss (missing data) and relies on prediction steps during outages.
 
-  ![FK2](results/kalman_trajectory2.svg)
+  <p align="center">
+    <img src="results/kalman_trajectory2.svg" alt="FK2" width="600"/>
+  </p>
 
 - **`FK3.m`**: **Advanced Velocity Inference**
   - Uses the same Constant Velocity Model as `FK2`.
   - **Feature**: Observation matrix includes previous states to better infer velocity from position changes.
   - Also handles missing measurement data.
 
-  ![FK3](results/kalman_trajectory3.svg)
+  <p align="center">
+    <img src="results/kalman_trajectory3.svg" alt="FK3" width="600"/>
+  </p>
 
 ---
 
@@ -97,25 +94,28 @@ We conducted experiments with three noise configurations, generating the corresp
 #### 🔵 Case 1 – Low Noise (Default Configuration)
 *Low values for initial covariance matrix `Q` and measurement noise `R`.*
 
-| Position Estimation | Velocity Estimation |
-|:---:|:---:|
-| ![Posicion Sin Ruido](results/kf_posicion_sinruido.png) | ![Velocidad Sin Ruido](results/kf_vel_sinruido.png) |
+<p align="center">
+  <img src="results/kf_posicion_sinruido.png" alt="Position - Low Noise" width="400"/>
+  <img src="results/kf_vel_sinruido.png" alt="Velocity - Low Noise" width="400"/>
+</p>
 | The filter accurately tracks the robot trajectory. Estimation is very close to the actual path. | The model trusts both the process and the measurement equally. |
 
 #### 🔴 Case 2 – High Measurement Noise
 *Low values for `Q` matrix. Measurement noise `R` multiplied by 5: `noise_std = np.array([0.02, 0.02, 0.01, 0.02, 0.02, 0.01]) * 5`*
 
-| Position Estimation | Velocity Estimation |
-|:---:|:---:|
-| ![Posicion Ruido Medida](results/kf_posicion_ruidoaltomed.png) | ![Velocidad Ruido Medida](results/kf_vel_ruidoaltomedida.png) |
+<p align="center">
+  <img src="results/kf_posicion_ruidoaltomed.png" alt="Position - High Measurement Noise" width="400"/>
+  <img src="results/kf_vel_ruidoaltomedida.png" alt="Velocity - High Measurement Noise" width="400"/>
+</p>
 | The filter has significant error because measurements are highly inaccurate. The estimated trajectory is very erratic. | Good compensation is observed thanks to the motion model. |
 
 #### 🟠 Case 3 – High Process Noise
 *Low values for measurement noise `R`. Initial covariance `Q` multiplied by 100: `initial_covariance = np.eye(3) * 100`*
 
-| Position Estimation | Velocity Estimation |
-|:---:|:---:|
-| ![Posicion Ruido Proceso](results/kf_posicion_ruidoaltoproceso.png) | ![Velocidad Ruido Proceso](results/kf_vel_ruidoaltoproceso.png) |
+<p align="center">
+  <img src="results/kf_posicion_ruidoaltoproceso.png" alt="Position - High Process Noise" width="400"/>
+  <img src="results/kf_vel_ruidoaltoproceso.png" alt="Velocity - High Process Noise" width="400"/>
+</p>
 | The filter reacts less abruptly to noise. For the pure Kalman Filter, a small offset separates the estimated trajectory from the real one. | This demonstrates how `Q` (process noise) directly affects trust in the dynamic model. |
 
 ### 📝 Technical Analysis
@@ -135,14 +135,29 @@ We conducted experiments with three noise configurations, generating the corresp
 
 Following the standard KF validation, we implemented **Extended Kalman Filters (EKF)** within the ROS 2 workspace. We tested 7D and 8D state vectors on circular trajectories.
 
+<p align="center">
+
 | 7D EKF Circle Test | 8D EKF Circle Test |
 |:---:|:---:|
-| ![7D Circle](results/7d_circle.png) | ![8D Circle](results/8d_circle.png) |
-| **7D State**: `[x, y, z, vx, vy, vz, yaw]` | **8D State**: `[x, y, z, vx, vy, vz, yaw, yaw_rate]`  |
+| <img src="results/7d_circle.png" alt="7D EKF" width="500"/> | <img src="results/8d_circle.png" alt="8D EKF" width="500"/> |
+| **State Vector**: `[x, y, z, vx, vy, vz, yaw]` | **State Vector**: `[x, y, z, vx, vy, vz, yaw, yaw_rate]` |
 | Shows good tracking but may lag in dynamic curves. | Includes `yaw_rate` for superior prediction in curved trajectories. |
+
+</p>
+
+---
+
+## 📂 Project Structure
+
+The workspace is organized into three core packages, consolidated for clarity and modularity:
+
+
+- **🎮 `drone_controller`**: Directs drone navigation and acts as the driver interface.
+- **🛠️ `drone_services`**: Provides computational services to offload heavy calculations.
+- **🧠 `ekf_estimator`**: The brain of the operation. Implements EKF with **3D, 7D, and 8D** state vectors.
 
 ---
 
 <p align="center">
-  <i>Developed for the Advanced Robotics Course</i>
+  <i>Developed for the Advanced Robotics Course of the University of Seville</i>
 </p>
